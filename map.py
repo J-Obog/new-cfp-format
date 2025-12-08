@@ -1,6 +1,6 @@
 from typing import List
 from bs4 import BeautifulSoup
-
+import json 
 
 def get_soup_from_file(filename: str) -> BeautifulSoup:
     with open(filename, "r") as f:
@@ -33,13 +33,30 @@ def get_sportsref_active_schools() -> List[str]:
     return schools
 
 
-
-
-
 sim_school_to_id_map = get_sim_school_to_id_map()
 sportsref_cfb_schools = get_sportsref_active_schools()
 
+SPECIAL_MAPPINGS = {
+    "Florida International": "FIU", 
+    "Louisiana-Monroe": "UL Monroe",
+    "Miami (FL)": "Miami", 
+    "Miami (OH)": "Miami (Ohio)",
+    "Middle Tennessee State": "Middle Tennessee",
+    "Nevada-Las Vegas": "UNLV",
+    "North Carolina": "UNC",
+    "North Carolina State": "NC State",
+    "Pitt": "Pittsburgh",
+    "South Florida": "USF",
+    "Southern Mississippi": "Southern Miss",
+    "Texas Christian": "TCU", 
+    "UTSA": "TX-San Antonio"
+}
+
+sportsref_to_sim_id_map = {}
 
 for school in sportsref_cfb_schools:
-    if school not in sim_school_to_id_map:
-        print(school)
+    sim_school = school if school in sim_school_to_id_map else SPECIAL_MAPPINGS[school]
+    sportsref_to_sim_id_map[school] = sim_school_to_id_map[sim_school]
+    
+with open("sportsref_to_sim_id.json", "w+", encoding="utf-8") as outfile:
+    json.dump(sportsref_to_sim_id_map, outfile)
