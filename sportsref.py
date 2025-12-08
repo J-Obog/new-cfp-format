@@ -9,6 +9,11 @@ class CfpRanking:
     rank: int
     school: str
 
+@dataclass
+class TeamRatingRanking:
+    rank: int
+    school: str
+
 class SportsrefUtil:
     @staticmethod
     def get_final_cfp_rankings(year: int) -> List[CfpRanking]:
@@ -27,7 +32,7 @@ class SportsrefUtil:
                 rankings.append(
                     CfpRanking(rank=rank, school=school)
                 )
-                
+
         return rankings
 
     @staticmethod
