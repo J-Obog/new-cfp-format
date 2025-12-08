@@ -1,10 +1,13 @@
 from common import get_soup_from_file
 
-SCHOOL_OPTIONS_FILENAME = "sim_school_options.html"
+SCHOOL_OPTIONS_FILENAME = "files/sim/sim_school_options.html"
+
+SchoolName = str
+SchoolId = str
 
 class SimUtils:
     @staticmethod
-    def get_sim_school_to_id_map() -> dict[str, str]:
+    def get_sim_school_to_id_map() -> dict[SchoolName, SchoolId]:
         soup = get_soup_from_file(SCHOOL_OPTIONS_FILENAME)
 
         data_map = {}
