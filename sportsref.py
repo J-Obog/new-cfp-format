@@ -16,6 +16,22 @@ class TeamRatingRanking:
 
 class SportsrefUtil:
     @staticmethod
+    def get_conference_champions(year: int) -> List[str]:
+        soup = get_soup_from_file(f"files/sportsref/conferences/conf_{year}.xls")
+
+        champs = []
+        for row in soup.find_all("tr"):
+            if row.has_attr("data-row"):
+                team = row.find("td", attrs={"data-stat": "conf_champ"}).text
+                
+                if team == "":
+                    continue
+
+                champs.append(team)
+
+        return champs
+
+    @staticmethod
     def get_final_cfp_rankings(year: int) -> List[CfpRanking]:
         soup = get_soup_from_file(f"files/sportsref/cfp_rankings/cfp_{year}.xls")
 
