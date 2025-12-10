@@ -10,11 +10,26 @@ class CfpRanking:
     school: str
 
 @dataclass
-class TeamRatingRanking:
-    rank: int
+class TeamRating:
+    rating: int
     school: str
 
 class SportsrefUtil:
+    @staticmethod
+    def get_team_ratings(year: int) -> List[TeamRating]:
+        soup = get_soup_from_file(f"files/sportsref/team_ratings/rat_{year}.xls")
+        ratings = []
+
+        for row in soup.find_all("tr"):
+            if row.has_attr("data-row"):
+                rating = int(row.find("th", attrs={"data-stat": "ranker"}).text)
+                team = row.find("td", attrs={"data-stat": "school_name"}).text
+                ratings.append(
+                    TeamRating(rating, team)
+                )
+
+        return ratings
+    
     @staticmethod
     def get_conference_champions(year: int) -> List[str]:
         soup = get_soup_from_file(f"files/sportsref/conferences/conf_{year}.xls")
@@ -22,12 +37,15 @@ class SportsrefUtil:
         champs = []
         for row in soup.find_all("tr"):
             if row.has_attr("data-row"):
-                team = row.find("td", attrs={"data-stat": "conf_champ"}).text
+                team = row.find("td", attrs={"data-stat": "conf_champ"}).text.strip()
                 
                 if team == "":
                     continue
 
-                champs.append(team)
+                if "," in team:
+                    champs.extend(list(map(lambda x: x.strip(), team.split(","))))
+                else:
+                    champs.append(team)
 
         return champs
 
