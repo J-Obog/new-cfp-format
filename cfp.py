@@ -4,13 +4,13 @@ from sim import SimResult
 from sportsref import SportsrefUtil
 import json
 from sim import SimUtils
+from bidict import bidict
 
 
 @dataclass
-class PlayoffSeed:
-    seed: int
-    team: str
-    is_conf_champ: bool
+class PlayoffMetadata:
+    conf_champs: List[str]
+    seeds: bidict[str, int]
 
 @dataclass
 class PlayoffMatchup:
@@ -25,39 +25,30 @@ class PlayoffBracket:
     seeds: List[PlayoffSeed]
     matchups: List[PlayoffMatchup]
 
-def get_playoff_seeds(year: int) -> List[PlayoffSeed]:
+
+def get_playoff_metadata(year: int) -> PlayoffMetadata:
     conf_champs = SportsrefUtil.get_conference_champions(year)
+    team_to_ovr_ranking = SportsrefUtil.get_team_ratings(year)
+    team_to_cfp_ranking = bidict(SportsrefUtil.get_final_cfp_rankings(year))
     playoff_teams = conf_champs
-    team_to_rating = {}
-    team_to_cfp_ranking = {} 
 
-    cfp_rankings = SportsrefUtil.get_final_cfp_rankings(year)
+    candidate_seed = 1
+    while len(playoff_teams) != 16:
+        team = team_to_cfp_ranking.inverse[candidate_seed]
+        candidate_seed += 1
+        if team in playoff_teams:
+            continue
+
+        playoff_teams.append(team)
+
     
-    for cfp_rank in cfp_rankings:
-        team_to_cfp_ranking[cfp_rank.school] = cfp_rank.rank
+    eff_rank_fn = lambda team: team_to_cfp_ranking[team] if team in team_to_cfp_ranking else team_to_ovr_ranking[team]
 
-    for team_rating in SportsrefUtil.get_team_ratings(year):
-        team_to_rating[team_rating.school] = team_rating.rating
+    playoff_teams.sort(key=eff_rank_fn)
+    seeds = { t:(i+1) for i,t in enumerate(playoff_teams)}
+    
+    return PlayoffMetadata(conf_champs=conf_champs, seeds=bidict(seeds))
 
-    pp = list(filter(lambda r: r.school not in playoff_teams, sorted(cfp_rankings, key=lambda x: x.rank)))
-    sss = list(map(lambda x: x.school, pp))
-
-    playoff_teams.extend(sss)
-    playoff_teams = playoff_teams[:16]
-
-    team_eff_rank_list = []
-
-    for team in playoff_teams:
-        eff_rank = team_to_cfp_ranking[team] if team in team_to_cfp_ranking else team_to_rating[team]
-        team_eff_rank_list.append({"eff_rank": eff_rank, "tm": team})
-
-    tms = [] 
-
-    for i,team in enumerate(sorted(team_eff_rank_list, key=lambda x: x["eff_rank"])):
-        tms.append(
-            PlayoffSeed(i + 1, team["tm"], team["tm"] in conf_champs)
-        )
-    return tms
 
 sim_school_id_map = {}
 
@@ -73,7 +64,7 @@ t_year = 2024
 
 seeds = get_playoff_seeds(t_year)
 
-print(seeds)
+#print(seeds)
 
 seed_to_team = {}
 team_to_seed = {}
@@ -88,12 +79,9 @@ for n,pair in enumerate([(1,16),(8,9),(5,12),(4,13),(6,11),(3, 14),(7, 10),(2,15
     pm = PlayoffMatchup(1, n+1, seed_to_team[pair[0]], seed_to_team[pair[1]], None)
     last_round.append(pm)
 
-
-
-
 while len(last_round) >= 1:
     if len(last_round) == 1:
-        pass
+        break
 
     new_round = []
 
@@ -119,8 +107,8 @@ while len(last_round) >= 1:
 
         n_round.append(PlayoffMatchup(next_round_id, pos, winner1, winner2, None))
 
-    #last_round = n_round
-    print(n_round)
+    last_round = n_round
 
-    #print(last_round)
-    break
+
+print(last_round)
+

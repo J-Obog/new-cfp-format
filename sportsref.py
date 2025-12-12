@@ -1,32 +1,23 @@
 from typing import List
+from bidir import BidirMap
 from common import get_soup_from_file
-from dataclasses import dataclass
 
 CFB_SCHOOLS_FILENAME = "files/sportsref/cfb_schools.xls"
 
-@dataclass
-class CfpRanking:
-    rank: int
-    school: str
-
-@dataclass
-class TeamRating:
-    rating: int
-    school: str
+SchoolName = str 
+Ranking = int
 
 class SportsrefUtil:
     @staticmethod
-    def get_team_ratings(year: int) -> List[TeamRating]:
+    def get_team_ratings(year: int) -> SchoolName, Ranking:
         soup = get_soup_from_file(f"files/sportsref/team_ratings/rat_{year}.xls")
-        ratings = []
+        ratings = {}
 
         for row in soup.find_all("tr"):
             if row.has_attr("data-row"):
                 rating = int(row.find("th", attrs={"data-stat": "ranker"}).text)
                 team = row.find("td", attrs={"data-stat": "school_name"}).text
-                ratings.append(
-                    TeamRating(rating, team)
-                )
+                ratings[team] = rating
 
         return ratings
     
@@ -50,10 +41,10 @@ class SportsrefUtil:
         return champs
 
     @staticmethod
-    def get_final_cfp_rankings(year: int) -> List[CfpRanking]:
+    def get_final_cfp_rankings(year: int) -> dict[SchoolName, Ranking]:
         soup = get_soup_from_file(f"files/sportsref/cfp_rankings/cfp_{year}.xls")
+        rankings = {}
 
-        rankings = []
         for row in soup.find_all("tr"):
             if row.has_attr("data-row"):
                 poll_date = row.find("td", attrs={"data-stat": "date_poll"}).text
@@ -63,9 +54,7 @@ class SportsrefUtil:
 
                 rank = int(row.find("td", attrs={"data-stat": "rank"})["csk"].split(".")[0])
                 school = row.find("td", attrs={"data-stat": "school_name"})["csk"].split(".")[0]
-                rankings.append(
-                    CfpRanking(rank=rank, school=school)
-                )
+                rankings[school] = rank
 
         return rankings
 
