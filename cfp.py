@@ -1,6 +1,9 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
+from sim import SimResult
 from sportsref import SportsrefUtil
+import json
+from sim import SimUtils
 
 
 @dataclass
@@ -8,6 +11,19 @@ class PlayoffSeed:
     seed: int
     team: str
     is_conf_champ: bool
+
+@dataclass
+class PlayoffMatchup:
+    round: int
+    position: int
+    team_a: str
+    team_b: str
+    result: Optional[SimResult]
+
+@dataclass
+class PlayoffBracket:
+    seeds: List[PlayoffSeed]
+    matchups: List[PlayoffMatchup]
 
 def get_playoff_seeds(year: int) -> List[PlayoffSeed]:
     conf_champs = SportsrefUtil.get_conference_champions(year)
@@ -43,12 +59,68 @@ def get_playoff_seeds(year: int) -> List[PlayoffSeed]:
         )
     return tms
 
+sim_school_id_map = {}
+
+with open("sportsref_to_sim_id.json", "r", encoding="utf-8") as ff:
+    sim_school_id_map = json.load(ff)
+
+sref_from_if_map = {}
+
+for k in sim_school_id_map:
+    sref_from_if_map[sim_school_id_map[k]] = k
+
+t_year = 2024
+
+seeds = get_playoff_seeds(t_year)
+
+print(seeds)
+
+seed_to_team = {}
+team_to_seed = {}
+for tm in seeds:
+    team_to_seed[tm.team] = tm.seed
+    seed_to_team[tm.seed] = tm.team
+
+last_round: List[PlayoffMatchup] = []
+champion = None
+
+for n,pair in enumerate([(1,16),(8,9),(5,12),(4,13),(6,11),(3, 14),(7, 10),(2,15)]):
+    pm = PlayoffMatchup(1, n+1, seed_to_team[pair[0]], seed_to_team[pair[1]], None)
+    last_round.append(pm)
 
 
-for i in range(2014, 2025):
-    print("----------Year----------", i)
-    for t in get_playoff_seeds(i):
-        print(t.seed, t.team)
 
-#print(SportsrefUtil.get_final_cfp_rankings(2024))
-#print(SportsrefUtil.get_conference_champions(2024))
+
+while len(last_round) >= 1:
+    if len(last_round) == 1:
+        pass
+
+    new_round = []
+
+    for i in range(len(last_round)):
+        mm = last_round[i]
+        team_a_id = sim_school_id_map[mm.team_a]
+        team_b_id = sim_school_id_map[mm.team_b]
+
+        res = SimUtils.sim_game(t_year, team_a_id, team_b_id)
+
+        last_round[i].result = res
+    
+
+    next_round_id = last_round[-1].round + 1
+
+    n_round = []
+
+    for n in range(1, len(last_round),2):
+        winner1 = sref_from_if_map[last_round[n-1].result.winner]
+        winner2 = sref_from_if_map[last_round[n].result.winner]
+        
+        pos = len(n_round) + 1
+
+        n_round.append(PlayoffMatchup(next_round_id, pos, winner1, winner2, None))
+
+    #last_round = n_round
+    print(n_round)
+
+    #print(last_round)
+    break
